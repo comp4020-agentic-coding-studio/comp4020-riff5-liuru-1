@@ -95,3 +95,69 @@ describe("game: clicking inflates the bubble instead of catching it", () => {
     expect(game.bubble.growth).toBe(1);
   });
 });
+
+// Every catch here is golden (0.1 sits under GOLDEN_CHANCE), so score climbs
+// by 3 per click instead of 1 — reaching the 15-point shield threshold in 5
+// clicks, well before the ~13 clicks of growth it'd take to burst under the
+// normal 1-point path.
+const armShield = (game: Game): void => {
+  for (let i = 0; i < 15 && game.status === "playing" && !game.shield; i++) {
+    game.catch();
+  }
+};
+
+describe("game: every 15 points, a shield wraps the bubble", () => {
+  it("arms a shield the moment score reaches the next multiple of 15", () => {
+    const game = new Game(() => 0.1);
+    expect(game.shield).toBeNull();
+
+    armShield(game);
+
+    expect(game.shield).not.toBeNull();
+    expect(game.score).toBeGreaterThanOrEqual(15);
+  });
+
+  it("blocks catch() on the wrapped bubble until the shield is down", () => {
+    const game = new Game(() => 0.1);
+    armShield(game);
+    const scoreWhileShielded = game.score;
+
+    game.catch();
+    expect(game.score).toBe(scoreWhileShielded);
+  });
+
+  it("takes several hits to burst, then awards a bonus and drops the shield", () => {
+    const game = new Game(() => 0.1);
+    armShield(game);
+    const scoreAtShield = game.score;
+    const hits = game.shield!.hits;
+
+    for (let i = 0; i < hits - 1; i++) {
+      expect(game.hitShield()).toBe(false);
+    }
+    expect(game.shield).not.toBeNull();
+
+    expect(game.hitShield()).toBe(true);
+    expect(game.shield).toBeNull();
+    expect(game.score).toBe(scoreAtShield + 3);
+  });
+
+  it("shrinks the shielded bubble slower than an unshielded one", () => {
+    const game = new Game(() => 0.1);
+    armShield(game);
+    expect(game.shield).not.toBeNull();
+
+    const lifetime = game.bubble.lifetime;
+    game.update(lifetime * 0.9);
+    expect(game.status).toBe("playing");
+  });
+
+  it("a restarted round clears the shield", () => {
+    const game = new Game(() => 0.1);
+    armShield(game);
+    expect(game.shield).not.toBeNull();
+
+    game.restart();
+    expect(game.shield).toBeNull();
+  });
+});

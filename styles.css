@@ -173,6 +173,102 @@ h1 {
   box-shadow: 0 0 40px rgba(255, 120, 120, 0.8);
 }
 
+/* The shell wraps a milestone bubble: bigger than it, on top of it in the
+   stacking order, and made of glassy rings rather than soap film so it never
+   reads as just a scaled-up bubble. */
+.shield {
+  position: absolute;
+  z-index: 4;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: ui-monospace, monospace;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 0 6px rgba(120, 200, 255, 0.8);
+  border: 2px solid rgba(190, 230, 255, 0.85);
+  background: radial-gradient(
+    circle,
+    rgba(190, 230, 255, 0.06),
+    rgba(190, 230, 255, 0.16) 70%,
+    rgba(190, 230, 255, 0.3) 100%
+  );
+  box-shadow:
+    0 0 22px rgba(180, 220, 255, 0.55),
+    inset 0 0 18px rgba(255, 255, 255, 0.25);
+  opacity: 0;
+  cursor: pointer;
+  pointer-events: none;
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}
+
+.shield.show {
+  opacity: 1;
+  pointer-events: auto;
+  animation: shield-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes shield-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 22px rgba(180, 220, 255, 0.55),
+      inset 0 0 18px rgba(255, 255, 255, 0.25);
+  }
+  50% {
+    box-shadow:
+      0 0 32px rgba(180, 220, 255, 0.85),
+      inset 0 0 26px rgba(255, 255, 255, 0.4);
+  }
+}
+
+.shield.crack {
+  animation: shield-crack 0.25s ease;
+}
+
+@keyframes shield-crack {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.9);
+    filter: brightness(1.7);
+  }
+}
+
+.shield.burst {
+  opacity: 0;
+  transform: scale(1.7);
+  pointer-events: none;
+}
+
+/* Firework particles thrown out when a shield finally bursts. */
+.particle {
+  position: absolute;
+  z-index: 6;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  animation: particle-burst 0.6s ease-out forwards;
+}
+
+@keyframes particle-burst {
+  0% {
+    transform: translate(-50%, -50%) translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(0.2);
+    opacity: 0;
+  }
+}
+
 .obstacle {
   position: absolute;
   z-index: 3;

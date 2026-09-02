@@ -9,6 +9,8 @@ const flashEl = document.querySelector<HTMLDivElement>("#flash")!;
 const MIN_SIZE = 22;
 const MAX_SIZE = 72;
 const RESTART_DELAY = 1100;
+const SHIELD_SCALE = 1.9;
+const PARTICLE_COUNT = 18;
 
 const game = new Game();
 let lastTime: number | null = null;
@@ -35,6 +37,48 @@ const obstacleEls = game.obstacles.map(() => {
   });
   stage.appendChild(el);
   return el;
+});
+
+// The shield sits between the player and the bubble it wraps: a bigger
+// circle, later in the DOM (so it stacks on top), that absorbs its own
+// clicks until it's used up its hits and bursts.
+const shieldEl = document.createElement("div");
+shieldEl.className = "shield";
+shieldEl.setAttribute("role", "button");
+shieldEl.setAttribute("aria-label", "shield");
+stage.appendChild(shieldEl);
+
+function spawnFireworks(cx: number, cy: number): void {
+  const colors = ["#ffd166", "#ef476f", "#06d6a0", "#118ab2", "#ffffff", "#f78c6b"];
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const p = document.createElement("div");
+    p.className = "particle";
+    const angle = (i / PARTICLE_COUNT) * Math.PI * 2 + Math.random() * 0.4;
+    const dist = 50 + Math.random() * 60;
+    p.style.setProperty("--dx", `${Math.cos(angle) * dist}px`);
+    p.style.setProperty("--dy", `${Math.sin(angle) * dist}px`);
+    p.style.left = `${cx}px`;
+    p.style.top = `${cy}px`;
+    p.style.background = colors[i % colors.length];
+    p.addEventListener("animationend", () => p.remove());
+    stage.appendChild(p);
+  }
+}
+
+shieldEl.addEventListener("click", () => {
+  if (game.status !== "playing") return;
+  const burst = game.hitShield();
+  if (burst) {
+    const { bubble } = game;
+    spawnFireworks(bubble.x * stageWidth, bubble.y * stageHeight);
+    shieldEl.classList.add("burst");
+    setTimeout(() => shieldEl.classList.remove("burst", "show"), 350);
+  } else {
+    shieldEl.classList.remove("crack");
+    void shieldEl.offsetWidth;
+    shieldEl.classList.add("crack");
+  }
+  render();
 });
 
 function measure(): void {
@@ -77,6 +121,19 @@ function render(): void {
   scoreEl.textContent = String(game.score);
   bestEl.textContent = game.best > 0 ? `best ${game.best}` : "";
 
+  const { shield } = game;
+  if (shield && game.status === "playing") {
+    const shieldSize = size * SHIELD_SCALE;
+    shieldEl.style.width = `${shieldSize}px`;
+    shieldEl.style.height = `${shieldSize}px`;
+    shieldEl.style.left = `${bubble.x * stageWidth - shieldSize / 2}px`;
+    shieldEl.style.top = `${bubble.y * stageHeight - shieldSize / 2}px`;
+    shieldEl.textContent = String(shield.hits);
+    shieldEl.classList.add("show");
+  } else if (!shieldEl.classList.contains("burst")) {
+    shieldEl.classList.remove("show");
+  }
+
   game.obstacles.forEach((o, i) => {
     const el = obstacleEls[i];
     el.classList.toggle("show", o.visible);
@@ -118,6 +175,7 @@ function frame(now: number): void {
     flashEl.classList.remove("show");
     bubbleEl.classList.remove("popped", "burst");
     obstacleEls.forEach((el) => el.classList.remove("hit"));
+    shieldEl.classList.remove("show", "burst", "crack");
     game.restart();
     restartAt = null;
   }

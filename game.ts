@@ -23,6 +23,16 @@ export interface BubbleState {
   golden: boolean;
 }
 
+// Every SHIELD_STEP points, the current bubble gets wrapped in a big outer
+// shell. The shell absorbs clicks meant for the bubble beneath it (a slower,
+// tougher obstacle you have to fight through rather than tap once), so
+// scoring pauses while it's up — that's also why the inner bubble is allowed
+// to shrink slower while shielded: the shell buys survival time, not extra
+// scoring time.
+export interface ShieldState {
+  hits: number;
+}
+
 const MARGIN = 0.08;
 const MIN_LIFETIME = 650;
 const BASE_LIFETIME = 2200;
@@ -34,6 +44,13 @@ const BURST_GROWTH = 2;
 
 const GOLDEN_CHANCE = 0.15;
 const GOLDEN_BONUS = 3;
+
+const SHIELD_STEP = 15;
+const SHIELD_HITS = 3;
+const SHIELD_BONUS = 3;
+// Age advances at this fraction of real time while shielded, so the inner
+// bubble shrinks slower — the shell is a reprieve, not a free ride.
+const SHIELD_AGE_RATE = 0.35;
 
 const OBSTACLE_COUNT = 2;
 const OBSTACLE_RADIUS = 0.07;
@@ -61,6 +78,8 @@ export class Game {
   endReason: EndReason = null;
   bubble: BubbleState;
   obstacles: ObstacleState[];
+  shield: ShieldState | null = null;
+  private shieldThreshold = SHIELD_STEP;
 
   constructor(private readonly random: () => number = Math.random) {
     this.bubble = this.spawn();
@@ -98,7 +117,7 @@ export class Game {
     if (this.status !== "playing") return;
     const b = this.bubble;
     b.bounced = false;
-    b.age += dtMs;
+    b.age += this.shield ? dtMs * SHIELD_AGE_RATE : dtMs;
     b.x += b.vx * (dtMs / 1000);
     b.y += b.vy * (dtMs / 1000);
     if (b.x < MARGIN || b.x > 1 - MARGIN) {
@@ -178,6 +197,9 @@ export class Game {
 
   catch(): void {
     if (this.status !== "playing") return;
+    // A shield in front of the bubble blocks the click same as an obstacle
+    // sitting on top of it — the shell has to be fought through first.
+    if (this.shield) return;
     if (this.bubbleBlocked()) return;
     this.score += this.bubble.golden ? GOLDEN_BONUS : 1;
     this.bubble.growth += GROWTH_STEP;
@@ -188,6 +210,22 @@ export class Game {
       return;
     }
     this.bubble = this.spawn({ x: this.bubble.x, y: this.bubble.y });
+    if (this.score >= this.shieldThreshold) {
+      this.shield = { hits: SHIELD_HITS };
+      this.shieldThreshold += SHIELD_STEP;
+    }
+  }
+
+  // Click on the shell itself. Returns true the instant it finally bursts
+  // (its last hit), so the renderer knows to fire the particle burst and
+  // knows exactly when — the score already carries the bonus at that point.
+  hitShield(): boolean {
+    if (this.status !== "playing" || !this.shield) return false;
+    this.shield.hits -= 1;
+    if (this.shield.hits > 0) return false;
+    this.shield = null;
+    this.score += SHIELD_BONUS;
+    return true;
   }
 
   // Touching an obstacle by clicking it (rather than the bubble drifting
@@ -204,6 +242,8 @@ export class Game {
     this.score = 0;
     this.status = "playing";
     this.endReason = null;
+    this.shield = null;
+    this.shieldThreshold = SHIELD_STEP;
     this.bubble = this.spawn();
   }
 }
