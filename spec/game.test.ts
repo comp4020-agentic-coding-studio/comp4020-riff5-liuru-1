@@ -45,6 +45,22 @@ describe("game: a missed bubble ends the round", () => {
     expect(game.status).toBe("playing");
     expect(game.score).toBe(0);
   });
+
+  it("catching a golden bubble scores a 3-point bonus instead of 1", () => {
+    // Scripted random sequence: angle, then a centred spawn (away from any
+    // obstacle, which spawns near the MARGIN corner), then a golden roll
+    // that lands under the golden chance, then obstacle timers rolled high
+    // enough to stay hidden for the single short tick this test runs.
+    const rolls = [0.3, 0.5, 0.5, 0.1, 0.9, 0.9, 0.9];
+    let i = 0;
+    const game = new Game(() => rolls[Math.min(i++, rolls.length - 1)]);
+    expect(game.bubble.golden).toBe(true);
+
+    game.update(100);
+    game.catch();
+
+    expect(game.score).toBe(3);
+  });
 });
 
 describe("game: clicking inflates the bubble instead of catching it", () => {

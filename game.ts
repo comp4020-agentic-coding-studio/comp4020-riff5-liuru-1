@@ -19,6 +19,8 @@ export interface BubbleState {
   // to know anything about presentation.
   bounced: boolean;
   growth: number;
+  // Rare bonus bubble worth GOLDEN_BONUS points instead of 1.
+  golden: boolean;
 }
 
 const MARGIN = 0.08;
@@ -29,6 +31,9 @@ const BASE_SPEED = 0.06;
 const SPEED_STEP = 0.006;
 const GROWTH_STEP = 0.08;
 const BURST_GROWTH = 2;
+
+const GOLDEN_CHANCE = 0.15;
+const GOLDEN_BONUS = 3;
 
 const OBSTACLE_COUNT = 2;
 const OBSTACLE_RADIUS = 0.07;
@@ -85,6 +90,7 @@ export class Game {
       lifetime: Math.max(MIN_LIFETIME, BASE_LIFETIME - this.score * LIFETIME_STEP),
       bounced: false,
       growth: origin ? this.bubble.growth : 1,
+      golden: this.random() < GOLDEN_CHANCE,
     };
   }
 
@@ -173,7 +179,7 @@ export class Game {
   catch(): void {
     if (this.status !== "playing") return;
     if (this.bubbleBlocked()) return;
-    this.score += 1;
+    this.score += this.bubble.golden ? GOLDEN_BONUS : 1;
     this.bubble.growth += GROWTH_STEP;
     if (this.bubble.growth >= BURST_GROWTH) {
       this.status = "over";

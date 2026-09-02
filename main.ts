@@ -73,6 +73,7 @@ function render(): void {
   bubbleEl.style.top = `${bubble.y * stageHeight - size / 2}px`;
   bubbleEl.style.setProperty("--hue", `${(1 - remaining) * 300}`);
   bubbleEl.classList.toggle("danger", remaining < DANGER_REMAINING);
+  bubbleEl.classList.toggle("golden", bubble.golden);
   scoreEl.textContent = String(game.score);
   bestEl.textContent = game.best > 0 ? `best ${game.best}` : "";
 
