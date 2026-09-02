@@ -10,6 +10,10 @@ export interface BubbleState {
   vy: number;
   age: number;
   lifetime: number;
+  // Set for the single update() tick in which the bubble bounced off a
+  // wall, so the renderer can react (wobble) without the physics needing
+  // to know anything about presentation.
+  bounced: boolean;
 }
 
 const MARGIN = 0.08;
@@ -40,6 +44,7 @@ export class Game {
   status: GameStatus = "playing";
   bubble: BubbleState;
   obstacles: ObstacleState[];
+  private wasBlocked = false;
 
   constructor(private readonly random: () => number = Math.random) {
     this.bubble = this.spawn();
@@ -67,28 +72,39 @@ export class Game {
       vy: Math.sin(angle) * speed,
       age: 0,
       lifetime: Math.max(MIN_LIFETIME, BASE_LIFETIME - this.score * LIFETIME_STEP),
+      bounced: false,
     };
   }
 
   update(dtMs: number): void {
     if (this.status !== "playing") return;
     const b = this.bubble;
+    b.bounced = false;
     b.age += dtMs;
     b.x += b.vx * (dtMs / 1000);
     b.y += b.vy * (dtMs / 1000);
     if (b.x < MARGIN || b.x > 1 - MARGIN) {
       b.vx *= -1;
       b.x = Math.min(1 - MARGIN, Math.max(MARGIN, b.x));
+      b.bounced = true;
     }
     if (b.y < MARGIN || b.y > 1 - MARGIN) {
       b.vy *= -1;
       b.y = Math.min(1 - MARGIN, Math.max(MARGIN, b.y));
+      b.bounced = true;
     }
     if (b.age >= b.lifetime) {
       this.status = "over";
       this.best = Math.max(this.best, this.score);
     }
     for (const o of this.obstacles) this.updateObstacle(o, dtMs);
+
+    // Drifting under a now-visible obstacle is a bump too, not just a wall
+    // bounce: flag it the moment the bubble enters cover, not on every tick
+    // it stays there.
+    const blocked = this.bubbleBlocked();
+    if (blocked && !this.wasBlocked) b.bounced = true;
+    this.wasBlocked = blocked;
   }
 
   private updateObstacle(o: ObstacleState, dtMs: number): void {

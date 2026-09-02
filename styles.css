@@ -121,6 +121,31 @@ h1 {
   pointer-events: auto;
 }
 
+#bubble.wobble {
+  animation: wobble 0.4s ease;
+}
+
+@keyframes wobble {
+  0% {
+    transform: scale(1, 1) rotate(0deg);
+  }
+  20% {
+    transform: scale(0.75, 1.25) rotate(-8deg);
+  }
+  40% {
+    transform: scale(1.2, 0.85) rotate(6deg);
+  }
+  60% {
+    transform: scale(0.9, 1.1) rotate(-4deg);
+  }
+  80% {
+    transform: scale(1.05, 0.97) rotate(2deg);
+  }
+  100% {
+    transform: scale(1, 1) rotate(0deg);
+  }
+}
+
 #flash {
   position: absolute;
   inset: 0;
