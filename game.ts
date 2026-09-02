@@ -5,7 +5,7 @@
 // bursts, ending the round the other way. Survival and greed pull against
 // each other on the same button.
 export type GameStatus = "playing" | "over";
-export type EndReason = "missed" | "burst" | null;
+export type EndReason = "missed" | "burst" | "obstacle" | null;
 
 export interface BubbleState {
   x: number;
@@ -30,12 +30,16 @@ const SPEED_STEP = 0.006;
 const GROWTH_STEP = 0.08;
 const BURST_GROWTH = 2;
 
-const OBSTACLE_COUNT = 3;
+const OBSTACLE_COUNT = 2;
 const OBSTACLE_RADIUS = 0.07;
-const OBSTACLE_MIN_HIDDEN = 1400;
-const OBSTACLE_MAX_HIDDEN = 3200;
-const OBSTACLE_MIN_VISIBLE = 900;
-const OBSTACLE_MAX_VISIBLE = 1900;
+const OBSTACLE_MIN_HIDDEN = 2400;
+const OBSTACLE_MAX_HIDDEN = 5000;
+const OBSTACLE_MIN_VISIBLE = 700;
+const OBSTACLE_MAX_VISIBLE = 1400;
+// Only used for obstacle-collision math (the wall margin already stands in
+// for the bubble's own size there); the bubble's rendered radius varies with
+// its remaining lifetime, but physics needs one fixed number to bounce off.
+const BUBBLE_RADIUS = 0.035;
 
 export interface ObstacleState {
   x: number;
@@ -52,7 +56,6 @@ export class Game {
   endReason: EndReason = null;
   bubble: BubbleState;
   obstacles: ObstacleState[];
-  private wasBlocked = false;
 
   constructor(private readonly random: () => number = Math.random) {
     this.bubble = this.spawn();
@@ -108,13 +111,33 @@ export class Game {
       this.best = Math.max(this.best, this.score);
     }
     for (const o of this.obstacles) this.updateObstacle(o, dtMs);
+    this.applyObstacleCollisions();
+  }
 
-    // Drifting under a now-visible obstacle is a bump too, not just a wall
-    // bounce: flag it the moment the bubble enters cover, not on every tick
-    // it stays there.
-    const blocked = this.bubbleBlocked();
-    if (blocked && !this.wasBlocked) b.bounced = true;
-    this.wasBlocked = blocked;
+  // A visible obstacle is a solid body, not just a click-blocker: the bubble
+  // bounces off it the same way it bounces off the stage walls, reflecting
+  // its velocity about the collision normal and getting pushed back outside
+  // the obstacle's radius so the two don't stay locked in overlap.
+  private applyObstacleCollisions(): void {
+    const b = this.bubble;
+    for (const o of this.obstacles) {
+      if (!o.visible) continue;
+      const dx = b.x - o.x;
+      const dy = b.y - o.y;
+      const dist = Math.hypot(dx, dy);
+      const minDist = o.radius + BUBBLE_RADIUS;
+      if (dist >= minDist) continue;
+      const nx = dist > 0 ? dx / dist : 1;
+      const ny = dist > 0 ? dy / dist : 0;
+      const dot = b.vx * nx + b.vy * ny;
+      if (dot < 0) {
+        b.vx -= 2 * dot * nx;
+        b.vy -= 2 * dot * ny;
+      }
+      b.x = o.x + nx * minDist;
+      b.y = o.y + ny * minDist;
+      b.bounced = true;
+    }
   }
 
   private updateObstacle(o: ObstacleState, dtMs: number): void {
@@ -159,6 +182,16 @@ export class Game {
       return;
     }
     this.bubble = this.spawn({ x: this.bubble.x, y: this.bubble.y });
+  }
+
+  // Touching an obstacle by clicking it (rather than the bubble drifting
+  // into it) is a fatal mistake, not a bump: it ends the round on the spot,
+  // same as running out the clock on a missed bubble.
+  hitObstacle(): void {
+    if (this.status !== "playing") return;
+    this.status = "over";
+    this.endReason = "obstacle";
+    this.best = Math.max(this.best, this.score);
   }
 
   restart(): void {

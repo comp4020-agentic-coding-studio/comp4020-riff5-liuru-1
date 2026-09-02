@@ -23,6 +23,16 @@ const obstacleEls = game.obstacles.map(() => {
   const el = document.createElement("div");
   el.className = "obstacle";
   el.setAttribute("aria-hidden", "true");
+  // Clicking the obstacle itself (not the bubble drifting into it) is a
+  // fatal miss-click: end the round immediately, same as running out the
+  // clock, rather than just bouncing.
+  el.addEventListener("click", () => {
+    if (game.status !== "playing") return;
+    game.hitObstacle();
+    el.classList.add("hit");
+    endRound(lastTime ?? performance.now());
+    render();
+  });
   stage.appendChild(el);
   return el;
 });
@@ -77,6 +87,19 @@ function render(): void {
   });
 }
 
+function endRound(now: number): void {
+  const reason = game.endReason;
+  flashEl.textContent =
+    reason === "burst"
+      ? `${game.score} — burst!`
+      : reason === "obstacle"
+        ? `${game.score} — hit!`
+        : String(game.score);
+  flashEl.classList.add("show");
+  bubbleEl.classList.add(reason === "burst" ? "burst" : "popped");
+  restartAt = now + RESTART_DELAY;
+}
+
 function frame(now: number): void {
   if (lastTime === null) lastTime = now;
   const dt = now - lastTime;
@@ -89,14 +112,11 @@ function frame(now: number): void {
   }
   const justEnded: boolean = wasPlaying && game.status === "over";
   if (justEnded) {
-    const burst = game.endReason === "burst";
-    flashEl.textContent = burst ? `${game.score} — burst!` : String(game.score);
-    flashEl.classList.add("show");
-    bubbleEl.classList.add(burst ? "burst" : "popped");
-    restartAt = now + RESTART_DELAY;
+    endRound(now);
   } else if (!wasPlaying && restartAt !== null && now >= restartAt) {
     flashEl.classList.remove("show");
     bubbleEl.classList.remove("popped", "burst");
+    obstacleEls.forEach((el) => el.classList.remove("hit"));
     game.restart();
     restartAt = null;
   }

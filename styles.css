@@ -170,6 +170,12 @@ h1 {
   pointer-events: auto;
 }
 
+.obstacle.hit {
+  opacity: 1;
+  transform: scale(1.5);
+  box-shadow: 0 0 34px rgba(255, 255, 255, 0.9);
+}
+
 #bubble.wobble {
   animation: wobble 0.4s ease;
 }
