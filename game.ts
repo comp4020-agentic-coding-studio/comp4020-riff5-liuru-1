@@ -36,9 +36,9 @@ export interface ShieldState {
 const MARGIN = 0.08;
 const MIN_LIFETIME = 650;
 const BASE_LIFETIME = 2200;
-const LIFETIME_STEP = 90;
+const LIFETIME_STEP = 68;
 const BASE_SPEED = 0.06;
-const SPEED_STEP = 0.006;
+const SPEED_STEP = 0.0045;
 const GROWTH_STEP = 0.08;
 const BURST_GROWTH = 2;
 
