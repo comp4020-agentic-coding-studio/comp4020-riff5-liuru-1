@@ -1,20 +1,19 @@
-import { Game } from "./game.ts";
+import { Game, type GameStatus } from "./game.ts";
+import { playClickSound, playGameOverSound } from "./sound.ts";
 
 const stage = document.querySelector<HTMLDivElement>("#stage")!;
 const bubbleEl = document.querySelector<HTMLButtonElement>("#bubble")!;
 const scoreEl = document.querySelector<HTMLDivElement>("#score")!;
 const bestEl = document.querySelector<HTMLDivElement>("#best")!;
-const flashEl = document.querySelector<HTMLDivElement>("#flash")!;
+const flashEl = document.querySelector<HTMLButtonElement>("#flash")!;
 
 const MIN_SIZE = 22;
 const MAX_SIZE = 72;
-const RESTART_DELAY = 1100;
 const SHIELD_SCALE = 1.9;
 const PARTICLE_COUNT = 18;
 
 const game = new Game();
 let lastTime: number | null = null;
-let restartAt: number | null = null;
 let stageWidth = 0;
 let stageHeight = 0;
 
@@ -32,7 +31,7 @@ const obstacleEls = game.obstacles.map(() => {
     if (game.status !== "playing") return;
     game.hitObstacle();
     el.classList.add("hit");
-    endRound(lastTime ?? performance.now());
+    endRound();
     render();
   });
   stage.appendChild(el);
@@ -145,17 +144,22 @@ function render(): void {
   });
 }
 
-function endRound(now: number): void {
+// Pause on death: show what this round scored next to the best ever scored,
+// and wait for a click rather than restarting on a timer — a death worth
+// reading beats a death worth waiting out.
+function endRound(): void {
   const reason = game.endReason;
-  flashEl.textContent =
-    reason === "burst"
-      ? `${game.score} — burst!`
-      : reason === "obstacle"
-        ? `${game.score} — hit!`
-        : String(game.score);
+  const label =
+    reason === "burst" ? `${game.score} — burst!` : reason === "obstacle" ? `${game.score} — hit!` : String(game.score);
+  flashEl.innerHTML = `
+    <div class="flash-score">${label}</div>
+    <div class="flash-best">best ${game.best}</div>
+    <div class="flash-hint">click to play again</div>
+  `;
+  flashEl.disabled = false;
   flashEl.classList.add("show");
   bubbleEl.classList.add(reason === "burst" ? "burst" : "popped");
-  restartAt = now + RESTART_DELAY;
+  playGameOverSound();
 }
 
 function frame(now: number): void {
@@ -169,16 +173,7 @@ function frame(now: number): void {
     if (game.bubble.bounced) wobble();
   }
   const justEnded: boolean = wasPlaying && game.status === "over";
-  if (justEnded) {
-    endRound(now);
-  } else if (!wasPlaying && restartAt !== null && now >= restartAt) {
-    flashEl.classList.remove("show");
-    bubbleEl.classList.remove("popped", "burst");
-    obstacleEls.forEach((el) => el.classList.remove("hit"));
-    shieldEl.classList.remove("show", "burst", "crack");
-    game.restart();
-    restartAt = null;
-  }
+  if (justEnded) endRound();
 
   render();
   requestAnimationFrame(frame);
@@ -193,9 +188,23 @@ let totalClicks = 0;
 bubbleEl.addEventListener("click", () => {
   if (game.status !== "playing") return;
   wobble();
+  const { bubble } = game;
+  playClickSound(sizeFor(bubble.age, bubble.lifetime, bubble.growth));
   totalClicks += 1;
   document.documentElement.style.setProperty("--bg-hue", `${(totalClicks * HUE_STEP_DEG) % 360}deg`);
   game.catch();
+  if ((game.status as GameStatus) === "over") endRound();
+  render();
+});
+
+flashEl.addEventListener("click", () => {
+  if (game.status !== "over") return;
+  flashEl.classList.remove("show");
+  flashEl.disabled = true;
+  bubbleEl.classList.remove("popped", "burst");
+  obstacleEls.forEach((el) => el.classList.remove("hit"));
+  shieldEl.classList.remove("show", "burst", "crack");
+  game.restart();
   render();
 });
 
