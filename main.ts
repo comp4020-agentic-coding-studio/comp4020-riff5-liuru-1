@@ -104,9 +104,17 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
 }
 
+// Every click on the bubble nudges the backdrop's hue a little further round
+// the wheel — a slow, cumulative drift across the whole session rather than
+// per-round feedback, so it survives restarts and rewards sustained play.
+const HUE_STEP_DEG = 7;
+let totalClicks = 0;
+
 bubbleEl.addEventListener("click", () => {
   if (game.status !== "playing") return;
   wobble();
+  totalClicks += 1;
+  document.documentElement.style.setProperty("--bg-hue", `${(totalClicks * HUE_STEP_DEG) % 360}deg`);
   game.catch();
   render();
 });

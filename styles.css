@@ -1,5 +1,6 @@
 :root {
   color-scheme: dark;
+  --bg-hue: 0deg;
 }
 
 * {
@@ -12,8 +13,20 @@ body {
   display: flex;
   flex-direction: column;
   font-family: system-ui, sans-serif;
-  background: radial-gradient(circle at 50% 20%, #0f1b2d, #05070d 70%);
   color: #e8eef7;
+  position: relative;
+}
+
+/* Background lives on its own layer so the hue drift below only tints the
+   backdrop, not the bubble/obstacle colours gameplay depends on reading. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(circle at 50% 20%, #0f1b2d, #05070d 70%);
+  filter: hue-rotate(var(--bg-hue));
+  transition: filter 1.4s ease;
 }
 
 header {
