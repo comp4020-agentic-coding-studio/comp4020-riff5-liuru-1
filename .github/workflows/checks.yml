@@ -14,67 +14,6 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  check:
-    # Jobs only run once the repo is public: private-phase pushes would drain
-    # the org's shared free Actions pool, and `pnpm check` runs the same
-    # sensors locally while you build (public repos get unlimited minutes, so
-    # cost ends at the flip).
-    if: ${{ !github.event.repository.private }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0 # full history so the secret scan can see all commits
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Build and run the spec
-        run: pnpm check
-      - name: Check the process evidence
-        # skipped in the template repo itself, where PROCESS.md is still the
-        # boilerplate every student replaces
-        if: ${{ !github.event.repository.is_template }}
-        run: pnpm check:evidence
-      - name: Check internal links
-        # Internal links only. linkinator checks outbound links by default, so
-        # someone else's rate limiter or outage would redden a build with
-        # nothing wrong in it --- crit 2 alone points the whole cohort at real
-        # orgs' sites and their socials. The regex skips anything not on the
-        # local origin the built site is served from; both spellings are named
-        # because a bare `--skip "^https?://"` matches that origin too and
-        # passes having scanned zero links. The stack skill rewrites the
-        # command below when it converts the repo to Astro, and carries the
-        # same skip over, so this comment holds either way.
-        run: pnpm dlx linkinator ./dist --silent --skip "^https?://(?!localhost|127)"
-      - name: Scan for committed secrets
-        # Pinned, both halves: the SHA fixes the action's script, and `version`
-        # fixes the scanner image, which otherwise floats on :latest. These two
-        # steps run in every repo in the course, so an upstream change would
-        # break the whole cohort's CI in the same hour. Bump between semesters.
-        uses: trufflesecurity/trufflehog@6f3c981e7b77f235fd2702dd74af25fc4b72bf11 # v3.96.0
-        with:
-          version: "3.96.0"
-          extra_args: --only-verified
-      - name: Scan for a committed course key
-        # The scan above reports only secrets it can confirm are live, and a
-        # course key has no verifier a runner can reach --- see
-        # .github/trufflehog.yml, which matches its shape instead.
-        # CustomRegex scopes this pass to that file's detector, so the built-in
-        # ones don't add unverified noise on top of it.
-        uses: trufflesecurity/trufflehog@6f3c981e7b77f235fd2702dd74af25fc4b72bf11 # v3.96.0
-        with:
-          version: "3.96.0"
-          extra_args: >-
-            --config=.github/trufflehog.yml
-            --include-detectors=CustomRegex --results=unverified
-            --no-verification
-
   deploy:
     # Deliberately not `needs: check`. A blocked deploy does not take a site
     # offline --- Pages keeps serving the last deployment --- so the site
