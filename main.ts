@@ -45,6 +45,14 @@ function sizeFor(age: number, lifetime: number): number {
   return MIN_SIZE + (MAX_SIZE - MIN_SIZE) * remaining;
 }
 
+function wobble(): void {
+  bubbleEl.classList.remove("wobble");
+  // Force a reflow so the animation restarts even if it's still running
+  // from a bounce a moment ago.
+  void bubbleEl.offsetWidth;
+  bubbleEl.classList.add("wobble");
+}
+
 function render(): void {
   const { bubble } = game;
   const remaining = Math.max(0, 1 - bubble.age / bubble.lifetime);
@@ -77,6 +85,7 @@ function frame(now: number): void {
   const wasPlaying = game.status === "playing";
   if (wasPlaying) {
     game.update(dt);
+    if (game.bubble.bounced) wobble();
   }
   const justEnded: boolean = wasPlaying && game.status === "over";
   if (justEnded) {
@@ -97,6 +106,7 @@ function frame(now: number): void {
 
 bubbleEl.addEventListener("click", () => {
   if (game.status !== "playing") return;
+  wobble();
   game.catch();
   render();
 });
