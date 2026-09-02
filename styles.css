@@ -85,6 +85,28 @@ h1 {
   color: #6f88ab;
 }
 
+#mute {
+  position: absolute;
+  top: 0.6rem;
+  left: 1rem;
+  z-index: 2;
+  border: none;
+  border-radius: 50%;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.08);
+  color: #b9c8de;
+  transition: background 0.15s ease;
+}
+
+#mute:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
 #bubble {
   --hue: 0;
   position: absolute;

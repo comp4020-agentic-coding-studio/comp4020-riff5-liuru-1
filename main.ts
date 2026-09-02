@@ -1,11 +1,15 @@
 import { Game, type GameStatus } from "./game.ts";
 import { playClickSound, playGameOverSound } from "./sound.ts";
+import { AmbientAudio } from "./audio.ts";
 
 const stage = document.querySelector<HTMLDivElement>("#stage")!;
 const bubbleEl = document.querySelector<HTMLButtonElement>("#bubble")!;
 const scoreEl = document.querySelector<HTMLDivElement>("#score")!;
 const bestEl = document.querySelector<HTMLDivElement>("#best")!;
 const flashEl = document.querySelector<HTMLButtonElement>("#flash")!;
+const muteEl = document.querySelector<HTMLButtonElement>("#mute")!;
+
+const audio = new AmbientAudio();
 
 const MIN_SIZE = 22;
 const MAX_SIZE = 72;
@@ -28,6 +32,7 @@ const obstacleEls = game.obstacles.map(() => {
   // fatal miss-click: end the round immediately, same as running out the
   // clock, rather than just bouncing.
   el.addEventListener("click", () => {
+    audio.start();
     if (game.status !== "playing") return;
     game.hitObstacle();
     el.classList.add("hit");
@@ -115,8 +120,10 @@ function render(): void {
   bubbleEl.style.left = `${bubble.x * stageWidth - size / 2}px`;
   bubbleEl.style.top = `${bubble.y * stageHeight - size / 2}px`;
   bubbleEl.style.setProperty("--hue", `${(1 - remaining) * 300}`);
-  bubbleEl.classList.toggle("danger", remaining < DANGER_REMAINING);
+  const danger = remaining < DANGER_REMAINING;
+  bubbleEl.classList.toggle("danger", danger);
   bubbleEl.classList.toggle("golden", bubble.golden);
+  audio.setTension(danger);
   scoreEl.textContent = String(game.score);
   bestEl.textContent = game.best > 0 ? `best ${game.best}` : "";
 
@@ -186,18 +193,25 @@ const HUE_STEP_DEG = 7;
 let totalClicks = 0;
 
 bubbleEl.addEventListener("click", () => {
+  audio.start();
   if (game.status !== "playing") return;
   wobble();
   const { bubble } = game;
   playClickSound(sizeFor(bubble.age, bubble.lifetime, bubble.growth));
   totalClicks += 1;
-  document.documentElement.style.setProperty("--bg-hue", `${(totalClicks * HUE_STEP_DEG) % 360}deg`);
+  const hueDeg = (totalClicks * HUE_STEP_DEG) % 360;
+  document.documentElement.style.setProperty("--bg-hue", `${hueDeg}deg`);
+  // Same drift signal as the backdrop's hue, just replayed as a slow
+  // brightening of the drone instead of a colour: one cumulative-session
+  // cue, two senses.
+  audio.setDrift(hueDeg / 360);
   game.catch();
   if ((game.status as GameStatus) === "over") endRound();
   render();
 });
 
 flashEl.addEventListener("click", () => {
+  audio.start();
   if (game.status !== "over") return;
   flashEl.classList.remove("show");
   flashEl.disabled = true;
@@ -208,6 +222,20 @@ flashEl.addEventListener("click", () => {
   render();
 });
 
+function syncMuteButton(): void {
+  const muted = audio.isMuted();
+  muteEl.textContent = muted ? "🔇" : "🔊";
+  muteEl.setAttribute("aria-pressed", String(muted));
+  muteEl.setAttribute("aria-label", muted ? "unmute ambient sound" : "mute ambient sound");
+}
+
+muteEl.addEventListener("click", () => {
+  audio.start();
+  audio.setMuted(!audio.isMuted());
+  syncMuteButton();
+});
+
+syncMuteButton();
 window.addEventListener("resize", measure);
 measure();
 render();
