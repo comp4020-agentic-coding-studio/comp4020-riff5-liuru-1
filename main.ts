@@ -33,6 +33,13 @@ function measure(): void {
   stageHeight = rect.height;
 }
 
+// A soap bubble's colour comes from thin-film interference, not pigment: the
+// film's colour shifts across the spectrum as it stretches or thins. A newly
+// spawned (thick, near-max-size) bubble sits at one end of that hue sweep; as
+// it shrinks toward death it sweeps across the rest, landing near red just
+// before it's gone — which doubles as the "about to burst" warning.
+const DANGER_REMAINING = 0.2;
+
 function sizeFor(age: number, lifetime: number): number {
   const remaining = Math.max(0, 1 - age / lifetime);
   return MIN_SIZE + (MAX_SIZE - MIN_SIZE) * remaining;
@@ -40,11 +47,14 @@ function sizeFor(age: number, lifetime: number): number {
 
 function render(): void {
   const { bubble } = game;
+  const remaining = Math.max(0, 1 - bubble.age / bubble.lifetime);
   const size = sizeFor(bubble.age, bubble.lifetime);
   bubbleEl.style.width = `${size}px`;
   bubbleEl.style.height = `${size}px`;
   bubbleEl.style.left = `${bubble.x * stageWidth - size / 2}px`;
   bubbleEl.style.top = `${bubble.y * stageHeight - size / 2}px`;
+  bubbleEl.style.setProperty("--hue", `${(1 - remaining) * 300}`);
+  bubbleEl.classList.toggle("danger", remaining < DANGER_REMAINING);
   scoreEl.textContent = String(game.score);
   bestEl.textContent = game.best > 0 ? `best ${game.best}` : "";
 

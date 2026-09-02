@@ -73,6 +73,7 @@ h1 {
 }
 
 #bubble {
+  --hue: 0;
   position: absolute;
   border: none;
   border-radius: 50%;
@@ -85,10 +86,32 @@ h1 {
     rgba(120, 160, 255, 0.25) 75%,
     rgba(120, 160, 255, 0.05) 100%
   );
+  /* White stays white under hue-rotate, so the glossy highlight survives
+     while the tinted film sweeps across the spectrum as --hue changes. */
+  filter: hue-rotate(calc(var(--hue) * 1deg)) saturate(1.6);
   box-shadow: 0 0 18px rgba(150, 210, 255, 0.45);
   transition:
     opacity 0.15s ease,
-    transform 0.15s ease;
+    transform 0.15s ease,
+    filter 0.1s linear;
+}
+
+#bubble.danger {
+  animation: bubble-danger-glow 0.45s ease-in-out infinite;
+}
+
+@keyframes bubble-danger-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 20px rgba(255, 70, 70, 0.6),
+      0 0 40px rgba(255, 30, 30, 0.3);
+  }
+  50% {
+    box-shadow:
+      0 0 34px rgba(255, 50, 50, 0.9),
+      0 0 60px rgba(255, 10, 10, 0.55);
+  }
 }
 
 #bubble.popped {
