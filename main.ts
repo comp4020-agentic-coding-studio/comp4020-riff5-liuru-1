@@ -40,9 +40,9 @@ function measure(): void {
 // before it's gone — which doubles as the "about to burst" warning.
 const DANGER_REMAINING = 0.2;
 
-function sizeFor(age: number, lifetime: number): number {
+function sizeFor(age: number, lifetime: number, growth: number): number {
   const remaining = Math.max(0, 1 - age / lifetime);
-  return MIN_SIZE + (MAX_SIZE - MIN_SIZE) * remaining;
+  return (MIN_SIZE + (MAX_SIZE - MIN_SIZE) * remaining) * growth;
 }
 
 function wobble(): void {
@@ -56,7 +56,7 @@ function wobble(): void {
 function render(): void {
   const { bubble } = game;
   const remaining = Math.max(0, 1 - bubble.age / bubble.lifetime);
-  const size = sizeFor(bubble.age, bubble.lifetime);
+  const size = sizeFor(bubble.age, bubble.lifetime, bubble.growth);
   bubbleEl.style.width = `${size}px`;
   bubbleEl.style.height = `${size}px`;
   bubbleEl.style.left = `${bubble.x * stageWidth - size / 2}px`;
@@ -89,13 +89,14 @@ function frame(now: number): void {
   }
   const justEnded: boolean = wasPlaying && game.status === "over";
   if (justEnded) {
-    flashEl.textContent = String(game.score);
+    const burst = game.endReason === "burst";
+    flashEl.textContent = burst ? `${game.score} — burst!` : String(game.score);
     flashEl.classList.add("show");
-    bubbleEl.classList.add("popped");
+    bubbleEl.classList.add(burst ? "burst" : "popped");
     restartAt = now + RESTART_DELAY;
   } else if (!wasPlaying && restartAt !== null && now >= restartAt) {
     flashEl.classList.remove("show");
-    bubbleEl.classList.remove("popped");
+    bubbleEl.classList.remove("popped", "burst");
     game.restart();
     restartAt = null;
   }

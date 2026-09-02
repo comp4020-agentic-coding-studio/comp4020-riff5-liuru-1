@@ -1,7 +1,11 @@
 // Pure game logic, no DOM: a single bubble drifts inside the unit square and
-// shrinks toward a fixed lifetime. Catching it before it expires scores a
-// point and spawns a faster, shorter-lived one; missing it ends the round.
+// shrinks toward a fixed lifetime — leave it unclicked and it vanishes, ending
+// the round. Clicking it doesn't catch it: it feeds it, resetting the clock
+// but permanently inflating it. Inflate it past double its birth size and it
+// bursts, ending the round the other way. Survival and greed pull against
+// each other on the same button.
 export type GameStatus = "playing" | "over";
+export type EndReason = "missed" | "burst" | null;
 
 export interface BubbleState {
   x: number;
@@ -14,6 +18,7 @@ export interface BubbleState {
   // wall, so the renderer can react (wobble) without the physics needing
   // to know anything about presentation.
   bounced: boolean;
+  growth: number;
 }
 
 const MARGIN = 0.08;
@@ -22,6 +27,8 @@ const BASE_LIFETIME = 2200;
 const LIFETIME_STEP = 90;
 const BASE_SPEED = 0.06;
 const SPEED_STEP = 0.006;
+const GROWTH_STEP = 0.08;
+const BURST_GROWTH = 2;
 
 const OBSTACLE_COUNT = 3;
 const OBSTACLE_RADIUS = 0.07;
@@ -42,6 +49,7 @@ export class Game {
   score = 0;
   best = 0;
   status: GameStatus = "playing";
+  endReason: EndReason = null;
   bubble: BubbleState;
   obstacles: ObstacleState[];
   private wasBlocked = false;
@@ -58,10 +66,10 @@ export class Game {
     }));
   }
 
-  // A caught bubble reappears from where it was caught, not a fresh random
-  // point: on a wide stage a random respawn can land far from the cursor
-  // while the shrinking lifetime leaves no time to travel there, turning a
-  // high score into a spawn-luck check rather than a tracking one.
+  // A fed bubble keeps its position, not a fresh random one: on a wide stage
+  // a random respawn can land far from the cursor while the shrinking
+  // lifetime leaves no time to travel there, turning a high score into a
+  // spawn-luck check rather than a tracking one.
   private spawn(origin?: { x: number; y: number }): BubbleState {
     const angle = this.random() * Math.PI * 2;
     const speed = BASE_SPEED + this.score * SPEED_STEP;
@@ -73,6 +81,7 @@ export class Game {
       age: 0,
       lifetime: Math.max(MIN_LIFETIME, BASE_LIFETIME - this.score * LIFETIME_STEP),
       bounced: false,
+      growth: origin ? this.bubble.growth : 1,
     };
   }
 
@@ -95,6 +104,7 @@ export class Game {
     }
     if (b.age >= b.lifetime) {
       this.status = "over";
+      this.endReason = "missed";
       this.best = Math.max(this.best, this.score);
     }
     for (const o of this.obstacles) this.updateObstacle(o, dtMs);
@@ -141,12 +151,20 @@ export class Game {
     if (this.status !== "playing") return;
     if (this.bubbleBlocked()) return;
     this.score += 1;
+    this.bubble.growth += GROWTH_STEP;
+    if (this.bubble.growth >= BURST_GROWTH) {
+      this.status = "over";
+      this.endReason = "burst";
+      this.best = Math.max(this.best, this.score);
+      return;
+    }
     this.bubble = this.spawn({ x: this.bubble.x, y: this.bubble.y });
   }
 
   restart(): void {
     this.score = 0;
     this.status = "playing";
+    this.endReason = null;
     this.bubble = this.spawn();
   }
 }
