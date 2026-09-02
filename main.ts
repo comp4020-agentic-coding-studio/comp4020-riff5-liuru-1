@@ -1,4 +1,4 @@
-import { Game } from "./game.ts";
+import { Game, type GameStatus } from "./game.ts";
 
 const stage = document.querySelector<HTMLDivElement>("#stage")!;
 const bubbleEl = document.querySelector<HTMLButtonElement>("#bubble")!;
@@ -132,6 +132,7 @@ bubbleEl.addEventListener("click", () => {
   totalClicks += 1;
   document.documentElement.style.setProperty("--bg-hue", `${(totalClicks * HUE_STEP_DEG) % 360}deg`);
   game.catch();
+  if ((game.status as GameStatus) === "over") endRound();
   render();
 });
 
