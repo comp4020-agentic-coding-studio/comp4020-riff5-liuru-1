@@ -1,4 +1,5 @@
 import { Game, type GameStatus } from "./game.ts";
+import { playClickSound, playGameOverSound } from "./sound.ts";
 
 const stage = document.querySelector<HTMLDivElement>("#stage")!;
 const bubbleEl = document.querySelector<HTMLButtonElement>("#bubble")!;
@@ -101,6 +102,7 @@ function endRound(): void {
   flashEl.disabled = false;
   flashEl.classList.add("show");
   bubbleEl.classList.add(reason === "burst" ? "burst" : "popped");
+  playGameOverSound();
 }
 
 function frame(now: number): void {
@@ -129,6 +131,8 @@ let totalClicks = 0;
 bubbleEl.addEventListener("click", () => {
   if (game.status !== "playing") return;
   wobble();
+  const { bubble } = game;
+  playClickSound(sizeFor(bubble.age, bubble.lifetime, bubble.growth));
   totalClicks += 1;
   document.documentElement.style.setProperty("--bg-hue", `${(totalClicks * HUE_STEP_DEG) % 360}deg`);
   game.catch();
