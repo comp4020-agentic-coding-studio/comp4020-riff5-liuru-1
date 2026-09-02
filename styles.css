@@ -96,6 +96,31 @@ h1 {
   transform: scale(1.6);
 }
 
+.obstacle {
+  position: absolute;
+  z-index: 3;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 30%,
+    rgba(255, 120, 120, 0.85),
+    rgba(200, 40, 60, 0.55) 55%,
+    rgba(120, 20, 30, 0.3) 100%
+  );
+  box-shadow: 0 0 16px rgba(220, 60, 70, 0.5);
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+  pointer-events: none;
+}
+
+.obstacle.show {
+  opacity: 0.9;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
 #flash {
   position: absolute;
   inset: 0;

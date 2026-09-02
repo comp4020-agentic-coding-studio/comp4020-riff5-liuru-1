@@ -16,6 +16,17 @@ let restartAt: number | null = null;
 let stageWidth = 0;
 let stageHeight = 0;
 
+// One div per obstacle, created once and reused — they sit later in the DOM
+// than #bubble so a visible one physically overlaps and intercepts clicks
+// meant for the bubble beneath it, the same way a real object in the way would.
+const obstacleEls = game.obstacles.map(() => {
+  const el = document.createElement("div");
+  el.className = "obstacle";
+  el.setAttribute("aria-hidden", "true");
+  stage.appendChild(el);
+  return el;
+});
+
 function measure(): void {
   const rect = stage.getBoundingClientRect();
   stageWidth = rect.width;
@@ -36,6 +47,16 @@ function render(): void {
   bubbleEl.style.top = `${bubble.y * stageHeight - size / 2}px`;
   scoreEl.textContent = String(game.score);
   bestEl.textContent = game.best > 0 ? `best ${game.best}` : "";
+
+  game.obstacles.forEach((o, i) => {
+    const el = obstacleEls[i];
+    el.classList.toggle("show", o.visible);
+    const obstacleSize = o.radius * 2 * stageWidth;
+    el.style.width = `${obstacleSize}px`;
+    el.style.height = `${o.radius * 2 * stageHeight}px`;
+    el.style.left = `${o.x * stageWidth - obstacleSize / 2}px`;
+    el.style.top = `${o.y * stageHeight - (o.radius * 2 * stageHeight) / 2}px`;
+  });
 }
 
 function frame(now: number): void {
